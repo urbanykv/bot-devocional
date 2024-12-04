@@ -2,12 +2,13 @@ import 'dotenv/config';
 import { Client, LocalAuth, MessageMedia } from 'whatsapp-web.js';
 import qrcode from 'qrcode-terminal';
 import mongoose from 'mongoose';
-import { scheduleJob } from 'node-schedule';
+import { Job, scheduleJob } from 'node-schedule';
 import { Usuario } from './types/usuario';
 import { convertToUsuario, formatDateToBrazilian } from './tools';
 import ExcelJS from 'exceljs';
 import path from 'path';
 import fs from 'fs';
+import { connectDB } from './dataAccess';
 
 const owner = [process.env.NUM_JONI != undefined ? process.env.NUM_JONI : "", process.env.NUM_MAT != undefined ? process.env.NUM_MAT : ""]
 const botNumber = process.env.NUM_BOT;
@@ -17,17 +18,6 @@ let listaAtiva: Usuario[] = [];
 
 const outputDir = path.join(__dirname, 'output');
 if (!fs.existsSync(outputDir)) { fs.mkdirSync(outputDir); }
-
-//Database Connection
-async function connectDB() {
-    const uri = process.env.MONGO_URI;
-    if (typeof uri == 'string') {
-        const client = await mongoose.connect(uri);
-        return client.connection;
-    } else {
-        console.log('Erro na conexão com o banco de dados.');
-    }
-}
 
 const usuarioSchema = new mongoose.Schema({ nome: String, numero: String });
 const UsuarioModel = mongoose.model('Usuario', usuarioSchema);
@@ -178,7 +168,11 @@ client.on('message', async (msg) => {
 
 */remover: <nome>, <numero>* - remove o usuário com as informações passadas no comando
 
-*/usuarios* - mostra os usuários cadastrados`); 
+*/usuarios* - mostra os usuários cadastrados
+
+*/escala* - exibe a escala atual
+
+*/iniciarescala* - inicia a escala`); 
         }
     }
 
@@ -196,8 +190,12 @@ client.on('message', async (msg) => {
     }
 
     if (text.trim() === "/iniciarescala") {
-        await client.sendMessage(from, 'Escala criada!');
-        agendarEnvios(client, owner);
+        if(listaAtiva.length === 0){
+            await client.sendMessage(from, 'Escala criada!');
+            agendarEnvios(client, owner);
+        } else {
+            await client.sendMessage(from, 'Já existe uma escala em andamento, para visualiza-la, digite o comando "/escala"!');
+        }
     }
 
     if (text.trim() === "/normas") {
@@ -212,18 +210,19 @@ client.on('message', async (msg) => {
 - Favor não se esquecer da data para o envio do seu devocional.`);
     }
 });
+let currentJob : Job;
 
 function agendarEnvios(client: Client, owner: string[]) {
-    scheduleJob('30 7 * * *', async () => {
+    if (currentJob) {
+        currentJob.cancel();
+    }
+
+    currentJob = scheduleJob('8 * * *', async () => {
         if (listaAtiva.length === 0) {
             console.log("antes da escala");
             await escalaAutomatica();
-        }
-    })
-    scheduleJob('8 * * *', async () => {
-        if (listaAtiva.length === 0) {
-            console.log("antes da escala");
-            await escalaAutomatica();
+        } else {
+            console.log("Usando escala existente.");
         }
 
         const usuario: Usuario = convertToUsuario(listaAtiva.shift());
@@ -335,7 +334,7 @@ const escalaAutomatica = async (): Promise<void> => {
     
     try { 
             const xlsxMedia = MessageMedia.fromFilePath(path.join(xlsxPath));
-            await client.sendMessage(groupId, xlsxMedia); 
+            //await client.sendMessage(groupId, xlsxMedia); 
             for (const o of owner) {
                     await client.sendMessage(`${o}@c.us`, xlsxMedia);
                     console.log(`Imagem enviada para o owner: ${o}`); 
