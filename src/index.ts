@@ -211,30 +211,49 @@ client.on('message', async (msg) => {
     }
 });
 let currentJob : Job;
+let isJobRunning = false;
 
 function agendarEnvios(client: Client, owner: string[]) {
     if (currentJob) {
+        console.log("Cancelando job anterior...");
         currentJob.cancel();
     }
 
-    currentJob = scheduleJob('8 * * *', async () => {
-        if (listaAtiva.length === 0) {
-            console.log("antes da escala");
-            await escalaAutomatica();
-        } else {
-            console.log("Usando escala existente.");
+    currentJob = scheduleJob('0 8 * * *', async () => {
+        if (isJobRunning) {
+            console.log("Job já em execução, ignorando execução duplicada.");
+            return;
         }
 
-        const usuario: Usuario = convertToUsuario(listaAtiva.shift());
+        isJobRunning = true;
+        console.log(`Job iniciado em ${new Date().toISOString()}`);
 
-        if (usuario !== undefined) {
-            const mensagemPadrao = `*Paz do Senhor, irmão ${usuario.nome}.*
+        try {
+            if (listaAtiva.length === 0) {
+                console.log("Lista ativa vazia, gerando escala automática.");
+                await escalaAutomatica();
+            } else {
+                console.log("Usando escala existente.");
+            }
 
-Eu sou o Maná-Bot e vim te lembrar que hoje é o seu dia de enviar o devocional no nosso grupo.
-        
-Deus te abençoe.`;
-            await client.sendMessage(`${usuario.numero}@c.us`, mensagemPadrao);
-            console.log(`Mensagem enviada para ${usuario.numero}`);
+            if (listaAtiva.length > 0) {
+                const usuario: Usuario = convertToUsuario(listaAtiva.shift());
+
+                if (usuario && usuario.numero) {
+                    const mensagemPadrao = `*Paz do Senhor, irmão ${usuario.nome}.*\n\nEu sou o Maná-Bot e vim te lembrar que hoje é o seu dia de enviar o devocional no nosso grupo.\n\nDeus te abençoe.`;
+                    await client.sendMessage(`${usuario.numero}@c.us`, mensagemPadrao);
+                    console.log(`Mensagem enviada para ${usuario.numero}`);
+                } else {
+                    console.log("Usuário inválido ou sem número de contato, ignorando.");
+                }
+            } else {
+                console.log("Nenhum usuário na lista ativa para enviar mensagens.");
+            }
+        } catch (error) {
+            console.error("Erro ao executar o job:", error);
+        } finally {
+            isJobRunning = false;
+            console.log(`Job concluído em ${new Date().toISOString()}`);
         }
     });
 }
