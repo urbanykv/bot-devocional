@@ -240,7 +240,7 @@ function agendarEnvios(client: Client, owner: string[]) {
                 const usuario: Usuario = convertToUsuario(listaAtiva.shift());
 
                 if (usuario && usuario.numero) {
-                    const mensagemPadrao = `*Paz do Senhor, irmão ${usuario.nome}.*\n\nEu sou o Maná-Bot e vim te lembrar que hoje é o seu dia de enviar o devocional no nosso grupo.\n\nDeus te abençoe.`;
+                    const mensagemPadrao = `*Paz do Senhor, irmão ${usuario.nome}.*\n\nEu sou o Robô do Devocional e vim te lembrar que hoje é o seu dia de enviar o devocional no nosso grupo.\n\nDeus te abençoe.`;
                     await client.sendMessage(`${usuario.numero}@c.us`, mensagemPadrao);
                     console.log(`Mensagem enviada para ${usuario.numero}`);
                 } else {
