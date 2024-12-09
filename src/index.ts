@@ -80,7 +80,7 @@ client.on('message', async (msg) => {
             
             const usuario: Usuario = { nome: inputInfo[0]?.trim(), numero: inputInfo[1]?.trim() };
             
-            if (usuario.nome == "" || !usuario.numero.startsWith('5511') || /[^\d]/.test(usuario.numero)) {
+            if (usuario.nome == "" || !usuario.numero.startsWith('55') || /[^\d]/.test(usuario.numero)) {
                 await client.sendMessage(from, 'Por favor, envie nome e número para cadastro.');
                 return;
             }
@@ -191,7 +191,7 @@ client.on('message', async (msg) => {
 
     if (text.trim() === "/iniciarescala") {
         if(listaAtiva.length === 0){
-            await client.sendMessage(from, 'Escala criada!');
+            await client.sendMessage(from, 'A Escala será criada em breve!');
             agendarEnvios(client, owner);
         } else {
             await client.sendMessage(from, 'Já existe uma escala em andamento, para visualiza-la, digite o comando "/escala"!');
@@ -219,7 +219,7 @@ function agendarEnvios(client: Client, owner: string[]) {
         currentJob.cancel();
     }
 
-    currentJob = scheduleJob('0 8 * * *', async () => {
+    currentJob = scheduleJob('0 11 * * *', async () => {
         if (isJobRunning) {
             console.log("Job já em execução, ignorando execução duplicada.");
             return;
